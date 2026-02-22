@@ -281,13 +281,11 @@ export default function Home() {
     return "I'm here all day. 💛\n\nSchedule questions, last night's wins, or just needing someone to say you're doing great — ask me anything.";
   };
 
-  const send=async(setMsgs,ctx)=>{
+  const send=(setMsgs,ctx)=>{
     if(!inp.trim())return;
-    const userMsg=inp.trim();
-    const currentMsgs=ctx==="night"?nmsgs:ctx==="nap"?napmsg:dmsgs;
-    const history=[...currentMsgs,{role:"u",text:userMsg}].slice(-6);
-    setMsgs(p=>[...p,{role:"u",text:userMsg}]);setInp("");setTyping(true);
-    try{const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:history,context:ctx,babyName:name,age:age,method:mo?.name||"gentle sleep training",nightNumber:nn})});const data=await res.json();setTyping(false);setMsgs(p=>[...p,{role:"a",text:data.reply}]);}catch(e){setTyping(false);setMsgs(p=>[...p,{role:"a",text:"I'm having a moment -- try again in a sec. I'm not going anywhere."}]);}
+    const reply=lunaReply(ctx);
+    setMsgs(p=>[...p,{role:"u",text:inp}]);setInp("");setTyping(true);
+    setTimeout(()=>{setTyping(false);setMsgs(p=>[...p,{role:"a",text:reply}]);},1200+Math.random()*800);
   };
 
   const sendDay=()=>send(setDmsgs,"day");
