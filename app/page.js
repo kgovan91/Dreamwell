@@ -225,7 +225,7 @@ export default function Home() {
     const done=setTimeout(()=>{
       const nightGreeting=`I'm here. Night ${nn} with ${name}. 🌙\n\nYou've prepared for this — you know the routine, you know your method, and you know what every sound means.\n\nTake a breath. Whenever you're ready, tell me — is ${name} in the crib?`;
       setNmsgs([{role:"a",text:nightGreeting}]);
-      if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"night",night_number:nn,role:"a",text:nightGreeting}).then(r=>console.log("Night greeting saved"));}
+      if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"night",night_number:nn,role:"a",content:nightGreeting}).then(r=>console.log("Night greeting saved"));}
       setSc(S.NIGHT);
     },4800);
     return()=>{ts.forEach(clearTimeout);clearTimeout(done);};
@@ -244,9 +244,9 @@ export default function Home() {
             if(data.night_number)setNn(data.night_number);
             supabase.from('sleep_logs').select('*').eq('user_id',session.user.id).order('night',{ascending:true}).then(({data:logs})=>{if(logs&&logs.length)setLog(logs.map(l=>({night:l.night,date:l.date,rating:l.rating,wakeups:l.wakeups})));});
             supabase.from('nap_logs').select('*').eq('user_id',session.user.id).order('created_at',{ascending:true}).then(({data:nl,error:ne})=>{if(!ne&&nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));});
-            supabase.from('chat_messages').select('*').eq('user_id',session.user.id).eq('chat_type','day').order('created_at',{ascending:true}).then(({data:msgs})=>{if(msgs&&msgs.length)setDmsgs(msgs.map(m=>({role:m.role,text:m.text})));});
+            supabase.from('chat_messages').select('*').eq('user_id',session.user.id).eq('chat_type','day').order('created_at',{ascending:true}).then(({data:msgs})=>{if(msgs&&msgs.length)setDmsgs(msgs.map(m=>({role:m.role,text:m.content})));});
             const nightNum=data.night_number||1;
-            supabase.from('chat_messages').select('*').eq('user_id',session.user.id).eq('chat_type','night').eq('night_number',nightNum).order('created_at',{ascending:true}).then(({data:msgs})=>{if(msgs&&msgs.length)setNmsgs(msgs.map(m=>({role:m.role,text:m.text})));});
+            supabase.from('chat_messages').select('*').eq('user_id',session.user.id).eq('chat_type','night').eq('night_number',nightNum).order('created_at',{ascending:true}).then(({data:msgs})=>{if(msgs&&msgs.length)setNmsgs(msgs.map(m=>({role:m.role,text:m.content})));});
             setSc(S.HOME);
           }else{setSc(S.SPLASH);}
           setAuthLoading(false);
@@ -292,8 +292,8 @@ export default function Home() {
           if(logs&&logs.length)setLog(logs.map(l=>({night:l.night,date:l.date,rating:l.rating,wakeups:l.wakeups})));
           try{const{data:nl}=await supabase.from('nap_logs').select('*').eq('user_id',data.user.id).order('created_at',{ascending:true});if(nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));}catch(e){}
           const nightNum=profile.night_number||1;
-          try{const{data:dayMsgs}=await supabase.from('chat_messages').select('*').eq('user_id',data.user.id).eq('chat_type','day').order('created_at',{ascending:true});if(dayMsgs&&dayMsgs.length)setDmsgs(dayMsgs.map(m=>({role:m.role,text:m.text})));}catch(e){}
-          try{const{data:nightMsgs}=await supabase.from('chat_messages').select('*').eq('user_id',data.user.id).eq('chat_type','night').eq('night_number',nightNum).order('created_at',{ascending:true});if(nightMsgs&&nightMsgs.length)setNmsgs(nightMsgs.map(m=>({role:m.role,text:m.text})));}catch(e){}
+          try{const{data:dayMsgs}=await supabase.from('chat_messages').select('*').eq('user_id',data.user.id).eq('chat_type','day').order('created_at',{ascending:true});if(dayMsgs&&dayMsgs.length)setDmsgs(dayMsgs.map(m=>({role:m.role,text:m.content})));}catch(e){}
+          try{const{data:nightMsgs}=await supabase.from('chat_messages').select('*').eq('user_id',data.user.id).eq('chat_type','night').eq('night_number',nightNum).order('created_at',{ascending:true});if(nightMsgs&&nightMsgs.length)setNmsgs(nightMsgs.map(m=>({role:m.role,text:m.content})));}catch(e){}
           setSc(S.HOME);
         }else{setSc(S.SPLASH);}
       }
@@ -412,7 +412,7 @@ export default function Home() {
     const u=[...naps];u[i]={actualStart:t};setNaps(u);setANap(i);
     const napGreeting=`${name} is down for Nap ${i+1}. 🌤️\n\nI'm here. Tell me what's happening — same as night, just softer. What do you hear?`;
     setNapmsg([{role:"a",text:napGreeting}]);
-    if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"nap",night_number:nn,role:"a",text:napGreeting}).then(r=>console.log("Nap greeting saved"));}
+    if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"nap",night_number:nn,role:"a",content:napGreeting}).then(r=>console.log("Nap greeting saved"));}
     setSc(S.NAP);
   };
 
@@ -470,9 +470,9 @@ export default function Home() {
     const currentMsgs=ctx==="night"?nmsgs:ctx==="nap"?napmsg:dmsgs;
     const history=[...currentMsgs,{role:"u",text:userMsg}].slice(-6);
     setMsgs(p=>[...p,{role:"u",text:userMsg}]);setInp("");setTyping(true);
-    if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:ctx,night_number:nn,role:"u",text:userMsg}).then(r=>console.log("User msg saved"));}
+    if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:ctx,night_number:nn,role:"u",content:userMsg}).then(r=>console.log("User msg saved"));}
     try{const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:history,context:ctx,babyName:name,age:age,method:mo?.name||"gentle sleep training",nightNumber:nn})});const data=await res.json();setTyping(false);setMsgs(p=>[...p,{role:"a",text:data.reply}]);
-      if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:ctx,night_number:nn,role:"a",text:data.reply}).then(r=>console.log("Luna msg saved"));}
+      if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:ctx,night_number:nn,role:"a",content:data.reply}).then(r=>console.log("Luna msg saved"));}
     }catch(e){setTyping(false);setMsgs(p=>[...p,{role:"a",text:"I'm having a moment -- try again in a sec. I'm not going anywhere."}]);}
   };
 
@@ -480,7 +480,7 @@ export default function Home() {
   const sendNight=()=>send(setNmsgs,"night");
   const sendNap=()=>send(setNapmsg,"nap");
 
-  const initDay=()=>{if(dmsgs.length===0){const greeting="Hi, I'm Luna — your personal sleep expert, available 24/7. I'm here for every question, every 2am moment, and every win. How can I help today?";setDmsgs([{role:"a",text:greeting}]);if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"day",night_number:nn,role:"a",text:greeting}).then(r=>console.log("Day greeting saved"));}}};
+  const initDay=()=>{if(dmsgs.length===0){const greeting="Hi, I'm Luna — your personal sleep expert, available 24/7. I'm here for every question, every 2am moment, and every win. How can I help today?";setDmsgs([{role:"a",text:greeting}]);if(user){supabase.from('chat_messages').insert({user_id:user.id,chat_type:"day",night_number:nn,role:"a",content:greeting}).then(r=>console.log("Day greeting saved"));}}};
 
   const Nav=()=>(
     <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:390,background:isDayMode?"rgba(240,233,220,0.97)":"rgba(13,17,23,0.96)",backdropFilter:"blur(20px)",borderTop:isDayMode?"1px solid rgba(212,197,168,0.6)":"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-around",padding:"8px 0 20px",zIndex:100}}>
