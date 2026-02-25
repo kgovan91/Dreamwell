@@ -189,6 +189,15 @@ export default function Home() {
   const[resetConfirm,setResetConfirm]=useState(false);
   const[changingMethod,setChangingMethod]=useState(false);
   const[showSignOut,setShowSignOut]=useState(false);
+  const[logModal,setLogModal]=useState(null);
+  const[lmRating,setLmRating]=useState(null);
+  const[lmWups,setLmWups]=useState(null);
+  const[lmNight,setLmNight]=useState("");
+  const[lmDate,setLmDate]=useState("");
+  const[napLogs,setNapLogs]=useState([]);
+  const[napEditModal,setNapEditModal]=useState(null);
+  const[neStart,setNeStart]=useState("");
+  const[neEnd,setNeEnd]=useState("");
   const dref=useRef(),nref=useRef(),napref=useRef();
 
   useEffect(()=>{
@@ -231,6 +240,7 @@ export default function Home() {
             if(data.sleep_method)setMethod(data.sleep_method);
             if(data.night_number)setNn(data.night_number);
             supabase.from('sleep_logs').select('*').eq('user_id',session.user.id).order('night',{ascending:true}).then(({data:logs})=>{if(logs&&logs.length)setLog(logs.map(l=>({night:l.night,date:l.date,rating:l.rating,wakeups:l.wakeups})));});
+            supabase.from('nap_logs').select('*').eq('user_id',session.user.id).order('created_at',{ascending:true}).then(({data:nl})=>{if(nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));}).catch(()=>{});
             setSc(S.HOME);
           }else{setSc(S.SPLASH);}
           setAuthLoading(false);
@@ -274,6 +284,7 @@ export default function Home() {
           setMethod(profile.sleep_method);setNn(profile.night_number||1);
           const{data:logs}=await supabase.from('sleep_logs').select('*').eq('user_id',data.user.id).order('night',{ascending:true});
           if(logs&&logs.length)setLog(logs.map(l=>({night:l.night,date:l.date,rating:l.rating,wakeups:l.wakeups})));
+          try{const{data:nl}=await supabase.from('nap_logs').select('*').eq('user_id',data.user.id).order('created_at',{ascending:true});if(nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));}catch(e){}
           setSc(S.HOME);
         }else{setSc(S.SPLASH);}
       }
@@ -285,7 +296,7 @@ export default function Home() {
     await supabase.auth.signOut();
     setUser(null);setSc(S.AUTH);
     setName("");setAge(6);setMethod(null);setNn(1);
-    setDmsgs([]);setNmsgs([]);setNapmsg([]);setLog([]);
+    setDmsgs([]);setNmsgs([]);setNapmsg([]);setLog([]);setNapLogs([]);
   };
 
   const saveProfile=async()=>{
@@ -316,6 +327,37 @@ export default function Home() {
     setMDone(true);setShowM(false);
   };
 
+  const openAddLog=()=>{setLmNight(String(nn>1?nn-1:1));setLmDate(new Date().toLocaleDateString());setLmRating(null);setLmWups(null);setLogModal({mode:"add"});};
+  const openEditLog=(entry,i)=>{setLmNight(String(entry.night));setLmDate(entry.date);setLmRating(entry.rating);setLmWups(typeof entry.wakeups==="string"?(/\d/.test(entry.wakeups)?parseInt(entry.wakeups):entry.wakeups):entry.wakeups);setLogModal({mode:"edit",index:i,entry});};
+  const saveLogEntry=async()=>{
+    if(!lmRating||lmWups===null)return;
+    const entry={night:parseInt(lmNight),date:lmDate,rating:lmRating,wakeups:typeof lmWups==="number"?lmWups:lmWups};
+    if(logModal.mode==="add"){
+      setLog(prev=>{if(prev.find(e=>e.night===entry.night))return prev;return[...prev,entry].sort((a,b)=>a.night-b.night);});
+      if(user){await supabase.from('sleep_logs').insert({user_id:user.id,night:entry.night,date:entry.date,rating:entry.rating,wakeups:String(entry.wakeups)});}
+    }else{
+      setLog(prev=>prev.map((e,i)=>i===logModal.index?entry:e).sort((a,b)=>a.night-b.night));
+      if(user){await supabase.from('sleep_logs').update({rating:entry.rating,wakeups:String(entry.wakeups)}).eq('user_id',user.id).eq('night',entry.night);}
+    }
+    setLogModal(null);
+  };
+
+  const saveNapLog=async(napNum,startTime,endTime,dur)=>{
+    const entry={date:new Date().toLocaleDateString(),nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur};
+    setNapLogs(prev=>[...prev,entry]);
+    if(user){await supabase.from('nap_logs').insert({user_id:user.id,date:entry.date,nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur}).catch(e=>console.log("Nap log save error (table may not exist yet):",e));}
+  };
+
+  const openEditNap=(nap,i)=>{setNeStart(nap.start_time);setNeEnd(nap.end_time);setNapEditModal({index:i,nap});};
+  const saveNapEdit=async()=>{
+    if(!neStart||!neEnd)return;
+    const dur=Math.max(t2m(neEnd)-t2m(neStart),0);
+    const updated={...napEditModal.nap,start_time:neStart,end_time:neEnd,duration:dur};
+    setNapLogs(prev=>prev.map((n,i)=>i===napEditModal.index?updated:n));
+    if(user){await supabase.from('nap_logs').update({start_time:neStart,end_time:neEnd,duration:dur}).eq('user_id',user.id).eq('date',updated.date).eq('nap_number',updated.nap_number).catch(()=>{});}
+    setNapEditModal(null);
+  };
+
   const startNap=(i)=>{
     const now=new Date(),t=`${now.getHours()}:${now.getMinutes().toString().padStart(2,"0")}`;
     const u=[...naps];u[i]={actualStart:t};setNaps(u);setANap(i);
@@ -327,6 +369,7 @@ export default function Home() {
     const now=new Date(),t=`${now.getHours()}:${now.getMinutes().toString().padStart(2,"0")}`;
     const cur=naps[i];if(!cur?.actualStart){setANap(null);setSc(S.HOME);return;}
     const dur=Math.max(t2m(t)-t2m(cur.actualStart),0);
+    saveNapLog(i+1,cur.actualStart,t,dur);
     if(dur<40){setModal({index:i,duration:dur,label:`Nap ${i+1}`,endTime:t});setANap(null);setSc(S.HOME);}
     else{const u=[...naps];u[i]={...cur,actualEnd:t,duration:dur};setNaps(u);setNotif(`Great Nap ${i+1}! ${dur} minutes — right on track. 💛`);setTimeout(()=>setNotif(null),10000);setANap(null);setSc(S.HOME);}
   };
@@ -1171,7 +1214,7 @@ export default function Home() {
               ? <button onClick={()=>setResetConfirm(true)} style={{background:"none",border:"none",color:D.textDim,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"16px 40px"}}>Reset app</button>
               : <div style={{display:"flex",gap:12,justifyContent:"center",alignItems:"center"}}>
                   <span style={{fontSize:12,color:D.textSec,fontFamily:"'DM Sans',sans-serif"}}>Start over?</span>
-                  <button onClick={async()=>{if(user){await supabase.from('sleep_logs').delete().eq('user_id',user.id);await supabase.from('profiles').delete().eq('id',user.id);}localStorage.removeItem("dw_v4");setName("");setAge(6);setMethod(null);setNn(1);setLog([]);setDmsgs([]);setNmsgs([]);setNapmsg([]);setMDone(false);setResetConfirm(false);setSc(S.ON1);}} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
+                  <button onClick={async()=>{if(user){await supabase.from('nap_logs').delete().eq('user_id',user.id).catch(()=>{});await supabase.from('sleep_logs').delete().eq('user_id',user.id);await supabase.from('profiles').delete().eq('id',user.id);}localStorage.removeItem("dw_v4");setName("");setAge(6);setMethod(null);setNn(1);setLog([]);setNapLogs([]);setDmsgs([]);setNmsgs([]);setNapmsg([]);setMDone(false);setResetConfirm(false);setSc(S.ON1);}} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
                   <button onClick={()=>setResetConfirm(false)} style={{background:"none",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:D.textSec,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Cancel</button>
                 </div>
             }
@@ -1340,27 +1383,131 @@ export default function Home() {
             <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:300,color:D.textPrimary}}>Sleep Log</h2>
             <CrescentMoon size={36} glow={false} />
           </div>
+
+          {/* Night logs */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:12,color:D.textDim,letterSpacing:1,textTransform:"uppercase"}}>Nights</div>
+            <button onClick={openAddLog} style={{background:"rgba(201,169,110,0.12)",border:"1px solid rgba(201,169,110,0.25)",borderRadius:10,padding:"6px 14px",color:"#C9A96E",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>+ Add Entry</button>
+          </div>
           {log.length===0?(
-            <div style={{textAlign:"center",padding:"60px 20px"}}>
-              <div style={{fontSize:48,marginBottom:16}}>📝</div>
-              <p style={{fontSize:16,color:D.textPrimary,fontWeight:500,marginBottom:8}}>No nights logged yet</p>
-              <p style={{fontSize:14,color:D.textSec,lineHeight:1.6}}>Your nightly data will appear here automatically after your morning check-in.</p>
+            <div style={{textAlign:"center",padding:"40px 20px",background:D.card,border:`1px solid ${D.border}`,borderRadius:16,marginBottom:24}}>
+              <div style={{fontSize:36,marginBottom:12}}>📝</div>
+              <p style={{fontSize:14,color:D.textPrimary,fontWeight:500,marginBottom:6}}>No nights logged yet</p>
+              <p style={{fontSize:13,color:D.textSec,lineHeight:1.6}}>Data appears here after your morning check-in, or tap + Add Entry above.</p>
             </div>
           ):(
-            log.map((entry,i)=>(
-              <div key={i} style={{background:D.card,border:`1px solid ${D.border}`,borderRadius:16,padding:16,marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <div style={{fontSize:15,color:D.textPrimary,fontWeight:500}}>Night {entry.night}</div>
-                  <div style={{fontSize:12,color:D.textDim}}>{entry.date}</div>
+            <div style={{marginBottom:24}}>
+              {log.map((entry,i)=>(
+                <div key={i} onClick={()=>openEditLog(entry,i)} style={{background:D.card,border:`1px solid ${D.border}`,borderRadius:16,padding:16,marginBottom:10,cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:15,color:D.textPrimary,fontWeight:500}}>Night {entry.night}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{fontSize:12,color:D.textDim}}>{entry.date}</div>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6B6560" strokeWidth="1.5" strokeLinecap="round"><path d="M7.5 2.5l2 2M3 7l4-4 2 2-4 4H3V7z"/></svg>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:16}}>
+                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Rating</div><div style={{fontSize:13,color:entry.rating==="great"?"#4CAF50":entry.rating==="rough"?"#FCA5A5":"#C9A96E"}}>{entry.rating==="great"?"😴 Great":entry.rating==="okay"?"😐 Okay":"😩 Rough"}</div></div>
+                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Wake-ups</div><div style={{fontSize:13,color:D.textPrimary}}>{entry.wakeups}</div></div>
+                  </div>
                 </div>
-                <div style={{display:"flex",gap:16}}>
-                  <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Rating</div><div style={{fontSize:13,color:entry.rating==="great"?"#4CAF50":entry.rating==="rough"?"#FCA5A5":"#C9A96E"}}>{entry.rating==="great"?"😴 Great":entry.rating==="okay"?"😐 Okay":"😩 Rough"}</div></div>
-                  <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Wake-ups</div><div style={{fontSize:13,color:D.textPrimary}}>{entry.wakeups}</div></div>
+              ))}
+            </div>
+          )}
+
+          {/* Nap logs */}
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:12,color:D.textDim,letterSpacing:1,textTransform:"uppercase"}}>Naps</div>
+          </div>
+          {napLogs.length===0?(
+            <div style={{textAlign:"center",padding:"32px 20px",background:D.card,border:`1px solid ${D.border}`,borderRadius:16,marginBottom:24}}>
+              <div style={{fontSize:28,marginBottom:10}}>🌤️</div>
+              <p style={{fontSize:14,color:D.textPrimary,fontWeight:500,marginBottom:6}}>No naps logged yet</p>
+              <p style={{fontSize:13,color:D.textSec,lineHeight:1.6}}>Naps are logged automatically when you use Luna's nap mode.</p>
+            </div>
+          ):(
+            <div style={{marginBottom:24}}>
+              {napLogs.map((nap,i)=>(
+                <div key={i} onClick={()=>openEditNap(nap,i)} style={{background:D.card,border:`1px solid rgba(147,197,253,0.12)`,borderRadius:16,padding:16,marginBottom:10,cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:15,color:"#93C5FD",fontWeight:500}}>Nap {nap.nap_number}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{fontSize:12,color:D.textDim}}>{nap.date}</div>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#6B6560" strokeWidth="1.5" strokeLinecap="round"><path d="M7.5 2.5l2 2M3 7l4-4 2 2-4 4H3V7z"/></svg>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:16}}>
+                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Time</div><div style={{fontSize:13,color:D.textPrimary}}>{nap.start_time} – {nap.end_time}</div></div>
+                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Duration</div><div style={{fontSize:13,color:nap.duration>=40?"#4CAF50":"#FCA5A5"}}>{nap.duration} min</div></div>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
           <Nav />
+        </div>
+      )}
+
+      {/* LOG ADD/EDIT MODAL */}
+      {logModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center",animation:"fadeIn .3s ease"}}>
+          <div style={{width:"100%",maxWidth:390,background:"#0D1117",borderRadius:"24px 24px 0 0",padding:"28px 24px 40px",border:"1px solid rgba(255,255,255,0.08)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{fontSize:24}}>📝</div>
+                <div><div style={{fontSize:16,fontWeight:500,color:"#EDE8DF"}}>{logModal.mode==="add"?"Add Sleep Log":"Edit Sleep Log"}</div><div style={{fontSize:13,color:"#6B6560",marginTop:2}}>Night {lmNight} · {lmDate}</div></div>
+              </div>
+              <button onClick={()=>setLogModal(null)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}} aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8B8680" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+            </div>
+            {logModal.mode==="add"&&(
+              <div style={{marginBottom:20}}>
+                <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Night number</label>
+                <input type="number" min="1" value={lmNight} onChange={e=>setLmNight(e.target.value)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:14,padding:"14px 16px",color:"#EDE8DF",fontFamily:"'DM Sans',sans-serif",fontSize:20,width:"100%",outline:"none",colorScheme:"dark"}} />
+              </div>
+            )}
+            <div style={{marginBottom:20}}>
+              <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>How was the night?</label>
+              <div style={{display:"flex",gap:10}}>
+                {[{id:"great",label:"😴 Great"},{id:"okay",label:"😐 Okay"},{id:"rough",label:"😩 Rough"}].map(opt=>(
+                  <button key={opt.id} onClick={()=>setLmRating(opt.id)} style={{flex:1,background:lmRating===opt.id?"rgba(201,169,110,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${lmRating===opt.id?"rgba(201,169,110,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:"10px 6px",color:lmRating===opt.id?"#C9A96E":"#8B8680",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>{opt.label}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:24}}>
+              <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>How many wake-ups?</label>
+              <div style={{display:"flex",gap:8}}>
+                {[0,1,2,3,"4+"].map(n=>(
+                  <button key={n} onClick={()=>setLmWups(n)} style={{flex:1,background:lmWups===n?"rgba(201,169,110,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${lmWups===n?"rgba(201,169,110,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"10px 4px",color:lmWups===n?"#C9A96E":"#8B8680",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>{n}</button>
+                ))}
+              </div>
+            </div>
+            <button className="bp" disabled={!lmRating||lmWups===null} onClick={saveLogEntry}>{logModal.mode==="add"?"Save Entry →":"Update Entry →"}</button>
+          </div>
+        </div>
+      )}
+
+      {/* NAP EDIT MODAL */}
+      {napEditModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center",animation:"fadeIn .3s ease"}}>
+          <div style={{width:"100%",maxWidth:390,background:"#0D1117",borderRadius:"24px 24px 0 0",padding:"28px 24px 40px",border:"1px solid rgba(147,197,253,0.15)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{fontSize:24}}>🌤️</div>
+                <div><div style={{fontSize:16,fontWeight:500,color:"#EDE8DF"}}>Edit Nap {napEditModal.nap.nap_number}</div><div style={{fontSize:13,color:"#93C5FD",marginTop:2}}>{napEditModal.nap.date}</div></div>
+              </div>
+              <button onClick={()=>setNapEditModal(null)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}} aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8B8680" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
+            </div>
+            <div style={{marginBottom:20}}>
+              <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Start time</label>
+              <input type="time" value={neStart} onChange={e=>setNeStart(e.target.value)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(147,197,253,0.15)",borderRadius:14,padding:"14px 16px",color:"#EDE8DF",fontFamily:"'DM Sans',sans-serif",fontSize:20,width:"100%",outline:"none",colorScheme:"dark"}} />
+            </div>
+            <div style={{marginBottom:20}}>
+              <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>End time</label>
+              <input type="time" value={neEnd} onChange={e=>setNeEnd(e.target.value)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(147,197,253,0.15)",borderRadius:14,padding:"14px 16px",color:"#EDE8DF",fontFamily:"'DM Sans',sans-serif",fontSize:20,width:"100%",outline:"none",colorScheme:"dark"}} />
+            </div>
+            {neStart&&neEnd&&<div style={{textAlign:"center",marginBottom:20,fontSize:14,color:"#93C5FD"}}>{Math.max(t2m(neEnd)-t2m(neStart),0)} minutes</div>}
+            <button className="bp" disabled={!neStart||!neEnd} onClick={saveNapEdit}>Update Nap →</button>
+          </div>
         </div>
       )}
 
