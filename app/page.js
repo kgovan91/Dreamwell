@@ -1171,7 +1171,7 @@ export default function Home() {
               ? <button onClick={()=>setResetConfirm(true)} style={{background:"none",border:"none",color:D.textDim,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"16px 40px"}}>Reset app</button>
               : <div style={{display:"flex",gap:12,justifyContent:"center",alignItems:"center"}}>
                   <span style={{fontSize:12,color:D.textSec,fontFamily:"'DM Sans',sans-serif"}}>Start over?</span>
-                  <button onClick={()=>{localStorage.removeItem("dw_v4");window.location.reload();}} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
+                  <button onClick={async()=>{if(user){await supabase.from('sleep_logs').delete().eq('user_id',user.id);await supabase.from('profiles').delete().eq('id',user.id);}localStorage.removeItem("dw_v4");setName("");setAge(6);setMethod(null);setNn(1);setLog([]);setDmsgs([]);setNmsgs([]);setNapmsg([]);setMDone(false);setResetConfirm(false);setSc(S.ON1);}} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
                   <button onClick={()=>setResetConfirm(false)} style={{background:"none",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:D.textSec,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Cancel</button>
                 </div>
             }
