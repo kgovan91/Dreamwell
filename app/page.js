@@ -1009,7 +1009,7 @@ export default function Home() {
                 <CrescentMoon size={36} glow animate />
                 <div><div style={{fontSize:16,fontWeight:500,color:"#EDE8DF"}}>Good morning 🌅</div><div style={{fontSize:13,color:"#6B6560",marginTop:2}}>Let's build {name}'s day</div></div>
               </div>
-              <button onClick={()=>{setShowM(false);setMDone(true);}} style={{background:"none",border:"none",color:"#6B6560",fontSize:22,cursor:"pointer",padding:"4px 8px",fontFamily:"'DM Sans',sans-serif"}}>✕</button>
+              <button onClick={()=>{setShowM(false);setMDone(true);}} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}} aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8B8680" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
             </div>
             <div style={{marginBottom:20}}>
               <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>What time did {name} wake up?</label>
