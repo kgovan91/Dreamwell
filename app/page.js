@@ -198,6 +198,7 @@ export default function Home() {
   const[napEditModal,setNapEditModal]=useState(null);
   const[neStart,setNeStart]=useState("");
   const[neEnd,setNeEnd]=useState("");
+  const[saveStatus,setSaveStatus]=useState(null);
   const dref=useRef(),nref=useRef(),napref=useRef();
 
   useEffect(()=>{
@@ -240,7 +241,7 @@ export default function Home() {
             if(data.sleep_method)setMethod(data.sleep_method);
             if(data.night_number)setNn(data.night_number);
             supabase.from('sleep_logs').select('*').eq('user_id',session.user.id).order('night',{ascending:true}).then(({data:logs})=>{if(logs&&logs.length)setLog(logs.map(l=>({night:l.night,date:l.date,rating:l.rating,wakeups:l.wakeups})));});
-            supabase.from('nap_logs').select('*').eq('user_id',session.user.id).order('created_at',{ascending:true}).then(({data:nl})=>{if(nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));}).catch(()=>{});
+            supabase.from('nap_logs').select('*').eq('user_id',session.user.id).order('created_at',{ascending:true}).then(({data:nl,error:ne})=>{if(!ne&&nl&&nl.length)setNapLogs(nl.map(n=>({date:n.date,nap_number:n.nap_number,start_time:n.start_time,end_time:n.end_time,duration:n.duration})));});
             setSc(S.HOME);
           }else{setSc(S.SPLASH);}
           setAuthLoading(false);
@@ -302,9 +303,9 @@ export default function Home() {
   const handleReset=async()=>{
     try{
       if(user){
-        await supabase.from('nap_logs').delete().eq('user_id',user.id).catch(()=>{});
-        await supabase.from('sleep_logs').delete().eq('user_id',user.id).catch(()=>{});
-        await supabase.from('profiles').delete().eq('id',user.id).catch(()=>{});
+        await supabase.from('nap_logs').delete().eq('user_id',user.id);
+        await supabase.from('sleep_logs').delete().eq('user_id',user.id);
+        await supabase.from('profiles').delete().eq('id',user.id);
       }
     }catch(e){console.log("Reset cleanup error:",e);}
     localStorage.removeItem("dw_v4");
@@ -345,42 +346,56 @@ export default function Home() {
   const openEditLog=(entry,i)=>{setLmNight(String(entry.night));setLmDate(entry.date);setLmRating(entry.rating);setLmWups(typeof entry.wakeups==="string"?(/\d/.test(entry.wakeups)?parseInt(entry.wakeups):entry.wakeups):entry.wakeups);setLogModal({mode:"edit",index:i,entry});};
   const saveLogEntry=()=>{
     if(!lmRating||lmWups===null||!logModal)return;
-    const modal=logModal;
-    setLogModal(null);
     const nightNum=parseInt(lmNight);
-    const entry={night:nightNum,date:lmDate,rating:lmRating,wakeups:typeof lmWups==="number"?lmWups:lmWups};
-    if(modal.mode==="add"){
-      setLog(prev=>{if(prev.find(e=>e.night===entry.night))return prev;return[...prev,entry].sort((a,b)=>a.night-b.night);});
-      if(nightNum>=nn){setNn(nightNum+1);if(user){supabase.from('profiles').upsert({id:user.id,baby_name:name,baby_age:String(age),sleep_method:method,night_number:nightNum+1}).then(r=>console.log("Profile updated",r));}}
-      if(user){supabase.from('sleep_logs').insert({user_id:user.id,night:entry.night,date:entry.date,rating:entry.rating,wakeups:String(entry.wakeups)}).then(r=>console.log("Sleep log saved",r)).catch(e=>console.error("Sleep log error",e));}
+    const isAdd=logModal.mode==="add";
+    const idx=logModal.index;
+    if(isAdd){
+      setLog(prev=>{if(prev.find(e=>e.night===nightNum))return prev;return[...prev,{night:nightNum,date:lmDate,rating:lmRating,wakeups:lmWups}].sort((a,b)=>a.night-b.night);});
+      if(user){
+        supabase.from('sleep_logs').insert({user_id:user.id,night:nightNum,date:lmDate,rating:lmRating,wakeups:String(lmWups)}).then(r=>{console.log("Manual sleep log saved",r);setSaveStatus("Night saved ✓");setTimeout(()=>setSaveStatus(null),2000);});
+      }
+      if(nightNum>=nn){
+        const newNn=nightNum+1;
+        setNn(newNn);
+        if(user){supabase.from('profiles').upsert({id:user.id,baby_name:name,baby_age:String(age),sleep_method:method,night_number:newNn}).then(r=>console.log("Profile nn updated",r));}
+      }
     }else{
-      setLog(prev=>prev.map((e,i)=>i===modal.index?entry:e).sort((a,b)=>a.night-b.night));
-      if(user){supabase.from('sleep_logs').update({rating:entry.rating,wakeups:String(entry.wakeups)}).eq('user_id',user.id).eq('night',entry.night).then(r=>console.log("Sleep log updated",r)).catch(e=>console.error("Sleep log update error",e));}
+      setLog(prev=>prev.map((e,i)=>i===idx?{night:nightNum,date:lmDate,rating:lmRating,wakeups:lmWups}:e).sort((a,b)=>a.night-b.night));
+      if(user){
+        supabase.from('sleep_logs').update({rating:lmRating,wakeups:String(lmWups)}).eq('user_id',user.id).eq('night',nightNum).then(r=>{console.log("Sleep log updated",r);setSaveStatus("Updated ✓");setTimeout(()=>setSaveStatus(null),2000);});
+      }
     }
+    setLogModal(null);
   };
 
   const saveNapLog=(napNum,startTime,endTime,dur)=>{
-    const entry={date:new Date().toLocaleDateString(),nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur};
-    setNapLogs(prev=>[...prev,entry]);
-    if(user){supabase.from('nap_logs').insert({user_id:user.id,date:entry.date,nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur}).then(r=>console.log("Nap log saved",r)).catch(e=>console.error("Nap log error",e));}
+    const d=new Date().toLocaleDateString();
+    setNapLogs(prev=>[...prev,{date:d,nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur}]);
+    if(user){
+      supabase.from('nap_logs').insert({user_id:user.id,date:d,nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur}).then(r=>{console.log("Auto nap saved",r);setSaveStatus("Nap saved ✓");setTimeout(()=>setSaveStatus(null),2000);});
+    }
   };
 
   const openEditNap=(nap,i)=>{setNeStart(nap.start_time);setNeEnd(nap.end_time);setNapEditModal({mode:"edit",index:i,nap});};
   const saveNapEdit=()=>{
     if(!neStart||!neEnd||!napEditModal)return;
-    const modal=napEditModal;
-    setNapEditModal(null);
     const dur=Math.max(t2m(neEnd)-t2m(neStart),0);
-    if(modal.mode==="add"){
-      const napNum=modal.nap.nap_number;
-      const napDate=modal.nap.date;
+    const isAdd=napEditModal.mode==="add";
+    const napNum=napEditModal.nap.nap_number;
+    const napDate=napEditModal.nap.date;
+    const idx=napEditModal.index;
+    if(isAdd){
       setNapLogs(prev=>[...prev,{date:napDate,nap_number:napNum,start_time:neStart,end_time:neEnd,duration:dur}]);
-      if(user){supabase.from('nap_logs').insert({user_id:user.id,date:napDate,nap_number:napNum,start_time:neStart,end_time:neEnd,duration:dur}).then(r=>console.log("Nap added",r)).catch(e=>console.error("Nap add error",e));}
+      if(user){
+        supabase.from('nap_logs').insert({user_id:user.id,date:napDate,nap_number:napNum,start_time:neStart,end_time:neEnd,duration:dur}).then(r=>{console.log("Manual nap saved",r);setSaveStatus("Nap saved ✓");setTimeout(()=>setSaveStatus(null),2000);});
+      }
     }else{
-      const updated={...modal.nap,start_time:neStart,end_time:neEnd,duration:dur};
-      setNapLogs(prev=>prev.map((n,i)=>i===modal.index?updated:n));
-      if(user){supabase.from('nap_logs').update({start_time:neStart,end_time:neEnd,duration:dur}).eq('user_id',user.id).eq('date',updated.date).eq('nap_number',updated.nap_number).then(r=>console.log("Nap updated",r)).catch(e=>console.error("Nap update error",e));}
+      setNapLogs(prev=>prev.map((n,i)=>i===idx?{...n,start_time:neStart,end_time:neEnd,duration:dur}:n));
+      if(user){
+        supabase.from('nap_logs').update({start_time:neStart,end_time:neEnd,duration:dur}).eq('user_id',user.id).eq('date',napDate).eq('nap_number',napNum).then(r=>{console.log("Nap updated",r);setSaveStatus("Nap updated ✓");setTimeout(()=>setSaveStatus(null),2000);});
+      }
     }
+    setNapEditModal(null);
   };
 
   const startNap=(i)=>{
@@ -1545,6 +1560,11 @@ export default function Home() {
             <button className="bp" disabled={!neStart||!neEnd} onClick={saveNapEdit}>{napEditModal.mode==="add"?"Save Nap →":"Update Nap →"}</button>
           </div>
         </div>
+      )}
+
+      {/* SAVE STATUS TOAST */}
+      {saveStatus&&(
+        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",background:"rgba(201,169,110,0.95)",color:"#0D1117",padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",zIndex:300,animation:"fadeIn .3s ease"}}>{saveStatus}</div>
       )}
 
 
