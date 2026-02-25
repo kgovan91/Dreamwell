@@ -309,8 +309,9 @@ export default function Home() {
 
   const submitM=()=>{
     if(rating&&wups!==null){
-      setSleepLog(prev=>{if(prev.find(e=>e.night===nn))return prev;return[...prev,{night:nn,date:new Date().toLocaleDateString(),rating,wakeups:wups}];});
-      if(user){supabase.from('sleep_logs').insert({user_id:user.id,night:nn,date:new Date().toLocaleDateString(),rating,wakeups:String(wups)}).then(r=>console.log("Sleep log saved",r));}
+      const logNight=nn-1;
+      setSleepLog(prev=>{if(prev.find(e=>e.night===logNight))return prev;return[...prev,{night:logNight,date:new Date().toLocaleDateString(),rating,wakeups:wups}];});
+      if(user){supabase.from('sleep_logs').insert({user_id:user.id,night:logNight,date:new Date().toLocaleDateString(),rating,wakeups:String(wups)}).then(r=>console.log("Sleep log saved",r));}
     }
     setMDone(true);setShowM(false);
   };
