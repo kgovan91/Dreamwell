@@ -299,6 +299,20 @@ export default function Home() {
     setDmsgs([]);setNmsgs([]);setNapmsg([]);setLog([]);setNapLogs([]);
   };
 
+  const handleReset=async()=>{
+    try{
+      if(user){
+        await supabase.from('nap_logs').delete().eq('user_id',user.id).catch(()=>{});
+        await supabase.from('sleep_logs').delete().eq('user_id',user.id).catch(()=>{});
+        await supabase.from('profiles').delete().eq('id',user.id).catch(()=>{});
+      }
+    }catch(e){console.log("Reset cleanup error:",e);}
+    localStorage.removeItem("dw_v4");
+    setName("");setAge(6);setMethod(null);setNn(1);setLog([]);setNapLogs([]);
+    setDmsgs([]);setNmsgs([]);setNapmsg([]);setMDone(false);setResetConfirm(false);
+    setSc(S.ON1);
+  };
+
   const saveProfile=async()=>{
     if(!user)return;
     await supabase.from('profiles').upsert({
@@ -348,13 +362,19 @@ export default function Home() {
     if(user){await supabase.from('nap_logs').insert({user_id:user.id,date:entry.date,nap_number:napNum,start_time:startTime,end_time:endTime,duration:dur}).catch(e=>console.log("Nap log save error (table may not exist yet):",e));}
   };
 
-  const openEditNap=(nap,i)=>{setNeStart(nap.start_time);setNeEnd(nap.end_time);setNapEditModal({index:i,nap});};
+  const openEditNap=(nap,i)=>{setNeStart(nap.start_time);setNeEnd(nap.end_time);setNapEditModal({mode:"edit",index:i,nap});};
   const saveNapEdit=async()=>{
     if(!neStart||!neEnd)return;
     const dur=Math.max(t2m(neEnd)-t2m(neStart),0);
-    const updated={...napEditModal.nap,start_time:neStart,end_time:neEnd,duration:dur};
-    setNapLogs(prev=>prev.map((n,i)=>i===napEditModal.index?updated:n));
-    if(user){await supabase.from('nap_logs').update({start_time:neStart,end_time:neEnd,duration:dur}).eq('user_id',user.id).eq('date',updated.date).eq('nap_number',updated.nap_number).catch(()=>{});}
+    if(napEditModal.mode==="add"){
+      const entry={date:napEditModal.nap.date,nap_number:napEditModal.nap.nap_number,start_time:neStart,end_time:neEnd,duration:dur};
+      setNapLogs(prev=>[...prev,entry]);
+      if(user){await supabase.from('nap_logs').insert({user_id:user.id,...entry}).catch(()=>{});}
+    }else{
+      const updated={...napEditModal.nap,start_time:neStart,end_time:neEnd,duration:dur};
+      setNapLogs(prev=>prev.map((n,i)=>i===napEditModal.index?updated:n));
+      if(user){await supabase.from('nap_logs').update({start_time:neStart,end_time:neEnd,duration:dur}).eq('user_id',user.id).eq('date',updated.date).eq('nap_number',updated.nap_number).catch(()=>{});}
+    }
     setNapEditModal(null);
   };
 
@@ -1214,7 +1234,7 @@ export default function Home() {
               ? <button onClick={()=>setResetConfirm(true)} style={{background:"none",border:"none",color:D.textDim,fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"16px 40px"}}>Reset app</button>
               : <div style={{display:"flex",gap:12,justifyContent:"center",alignItems:"center"}}>
                   <span style={{fontSize:12,color:D.textSec,fontFamily:"'DM Sans',sans-serif"}}>Start over?</span>
-                  <button onClick={async()=>{if(user){await supabase.from('nap_logs').delete().eq('user_id',user.id).catch(()=>{});await supabase.from('sleep_logs').delete().eq('user_id',user.id);await supabase.from('profiles').delete().eq('id',user.id);}localStorage.removeItem("dw_v4");setName("");setAge(6);setMethod(null);setNn(1);setLog([]);setNapLogs([]);setDmsgs([]);setNmsgs([]);setNapmsg([]);setMDone(false);setResetConfirm(false);setSc(S.ON1);}} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
+                  <button onClick={handleReset} style={{background:"#C9A96E",border:"none",borderRadius:20,color:"#0D1117",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Yes</button>
                   <button onClick={()=>setResetConfirm(false)} style={{background:"none",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:D.textSec,fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:"8px 16px"}}>Cancel</button>
                 </div>
             }
@@ -1416,14 +1436,15 @@ export default function Home() {
           )}
 
           {/* Nap logs */}
-          <div style={{marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <div style={{fontSize:12,color:D.textDim,letterSpacing:1,textTransform:"uppercase"}}>Naps</div>
+            <button onClick={()=>{setNeStart("");setNeEnd("");setNapEditModal({mode:"add",nap:{nap_number:napLogs.length+1,date:new Date().toLocaleDateString()}});}} style={{background:"rgba(147,197,253,0.12)",border:"1px solid rgba(147,197,253,0.25)",borderRadius:10,padding:"6px 14px",color:"#93C5FD",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>+ Add Nap</button>
           </div>
           {napLogs.length===0?(
             <div style={{textAlign:"center",padding:"32px 20px",background:D.card,border:`1px solid ${D.border}`,borderRadius:16,marginBottom:24}}>
               <div style={{fontSize:28,marginBottom:10}}>🌤️</div>
               <p style={{fontSize:14,color:D.textPrimary,fontWeight:500,marginBottom:6}}>No naps logged yet</p>
-              <p style={{fontSize:13,color:D.textSec,lineHeight:1.6}}>Naps are logged automatically when you use Luna's nap mode.</p>
+              <p style={{fontSize:13,color:D.textSec,lineHeight:1.6}}>Naps are logged automatically via nap mode, or tap + Add Nap above.</p>
             </div>
           ):(
             <div style={{marginBottom:24}}>
@@ -1437,7 +1458,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div style={{display:"flex",gap:16}}>
-                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Time</div><div style={{fontSize:13,color:D.textPrimary}}>{nap.start_time} – {nap.end_time}</div></div>
+                    <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Time</div><div style={{fontSize:13,color:D.textPrimary}}>{fmt(nap.start_time)} – {fmt(nap.end_time)}</div></div>
                     <div><div style={{fontSize:11,color:D.textDim,marginBottom:4}}>Duration</div><div style={{fontSize:13,color:nap.duration>=40?"#4CAF50":"#FCA5A5"}}>{nap.duration} min</div></div>
                   </div>
                 </div>
@@ -1486,17 +1507,27 @@ export default function Home() {
         </div>
       )}
 
-      {/* NAP EDIT MODAL */}
+      {/* NAP ADD/EDIT MODAL */}
       {napEditModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center",animation:"fadeIn .3s ease"}}>
           <div style={{width:"100%",maxWidth:390,background:"#0D1117",borderRadius:"24px 24px 0 0",padding:"28px 24px 40px",border:"1px solid rgba(147,197,253,0.15)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
                 <div style={{fontSize:24}}>🌤️</div>
-                <div><div style={{fontSize:16,fontWeight:500,color:"#EDE8DF"}}>Edit Nap {napEditModal.nap.nap_number}</div><div style={{fontSize:13,color:"#93C5FD",marginTop:2}}>{napEditModal.nap.date}</div></div>
+                <div><div style={{fontSize:16,fontWeight:500,color:"#EDE8DF"}}>{napEditModal.mode==="add"?"Add Nap":"Edit Nap "+napEditModal.nap.nap_number}</div><div style={{fontSize:13,color:"#93C5FD",marginTop:2}}>{napEditModal.nap.date}</div></div>
               </div>
               <button onClick={()=>setNapEditModal(null)} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}} aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8B8680" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg></button>
             </div>
+            {napEditModal.mode==="add"&&(
+              <div style={{marginBottom:20}}>
+                <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Nap number</label>
+                <div style={{display:"flex",gap:8}}>
+                  {[1,2,3,4].map(n=>(
+                    <button key={n} onClick={()=>setNapEditModal(prev=>({...prev,nap:{...prev.nap,nap_number:n}}))} style={{flex:1,background:napEditModal.nap.nap_number===n?"rgba(147,197,253,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${napEditModal.nap.nap_number===n?"rgba(147,197,253,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"10px 4px",color:napEditModal.nap.nap_number===n?"#93C5FD":"#8B8680",fontSize:13,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all .2s"}}>{n}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{marginBottom:20}}>
               <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Start time</label>
               <input type="time" value={neStart} onChange={e=>setNeStart(e.target.value)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(147,197,253,0.15)",borderRadius:14,padding:"14px 16px",color:"#EDE8DF",fontFamily:"'DM Sans',sans-serif",fontSize:20,width:"100%",outline:"none",colorScheme:"dark"}} />
@@ -1506,7 +1537,7 @@ export default function Home() {
               <input type="time" value={neEnd} onChange={e=>setNeEnd(e.target.value)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(147,197,253,0.15)",borderRadius:14,padding:"14px 16px",color:"#EDE8DF",fontFamily:"'DM Sans',sans-serif",fontSize:20,width:"100%",outline:"none",colorScheme:"dark"}} />
             </div>
             {neStart&&neEnd&&<div style={{textAlign:"center",marginBottom:20,fontSize:14,color:"#93C5FD"}}>{Math.max(t2m(neEnd)-t2m(neStart),0)} minutes</div>}
-            <button className="bp" disabled={!neStart||!neEnd} onClick={saveNapEdit}>Update Nap →</button>
+            <button className="bp" disabled={!neStart||!neEnd} onClick={saveNapEdit}>{napEditModal.mode==="add"?"Save Nap →":"Update Nap →"}</button>
           </div>
         </div>
       )}
