@@ -13,19 +13,19 @@ const geistMono = localFont({
 });
 
 export const metadata = {
-  title: "Dreamwell — Your 24/7 Baby Sleep Coach",
-  description: "Meet Luna \u2014 your AI sleep coach available 24/7. Science-backed sleep training and real-time support for peaceful nights.",
+  title: "Nuette — Your calm at 3am",
+  description: "Meet Luna — your AI sleep coach available 24/7. Science-backed sleep training and real-time support for peaceful nights.",
   openGraph: {
-    title: "Dreamwell — Your 24/7 Baby Sleep Coach",
-    description: "Meet Luna \u2014 your AI sleep coach available 24/7. Science-backed sleep training and real-time support for peaceful nights.",
-    url: "https://dreamwell.live",
-    siteName: "Dreamwell",
+    title: "Nuette — Your calm at 3am",
+    description: "Meet Luna — your AI sleep coach available 24/7. Science-backed sleep training and real-time support for peaceful nights.",
+    url: "https://nuette.app",
+    siteName: "Nuette",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Dreamwell — Your 24/7 Baby Sleep Coach",
-    description: "Meet Luna \u2014 your AI baby sleep coach. Available 24/7.",
+    title: "Nuette — Your calm at 3am",
+    description: "Meet Luna — your AI baby sleep coach. Available 24/7.",
   },
 };
 
