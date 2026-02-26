@@ -602,7 +602,7 @@ export default function Home() {
       <div style={{width:"100%",maxWidth:360,textAlign:"center"}}>
         <CrescentMoon size={80} glow animate/>
         <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:42,color:"#EDE8DF",fontWeight:300,margin:"24px 0 4px",letterSpacing:1}}>Nuette</h1>
-        <p style={{color:"#C9A96E",fontSize:14,marginBottom:40,letterSpacing:0.5}}>Your calm at 3am</p>
+        <p style={{color:"#C9A96E",fontSize:16,marginBottom:40,fontFamily:"'Cormorant Garamond',serif",fontStyle:"italic",fontWeight:300,letterSpacing:1}}>Your calm at 3am.</p>
         <div style={{display:"flex",background:"rgba(255,255,255,0.06)",borderRadius:12,padding:3,marginBottom:28}}>
           <button onClick={()=>{setAuthMode("login");setAuthError("");}} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,background:authMode==="login"?"rgba(201,169,110,0.2)":"transparent",color:authMode==="login"?"#C9A96E":"#8a8070",transition:"all .2s"}}>Sign In</button>
           <button onClick={()=>{setAuthMode("signup");setAuthError("");}} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,background:authMode==="signup"?"rgba(201,169,110,0.2)":"transparent",color:authMode==="signup"?"#C9A96E":"#8a8070",transition:"all .2s"}}>Create Account</button>
