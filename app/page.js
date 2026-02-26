@@ -684,8 +684,8 @@ export default function Home() {
         <p style={{fontFamily:"'Cormorant Garamond',serif",fontStyle:"italic",fontSize:18,color:"#C9A96E",marginBottom:36}}>You don't have to figure this out alone.</p>
         <button onClick={()=>{setAuthMode("signup");setSc(S.AUTH);}} style={{display:"inline-block",padding:"16px 48px",background:"#1a1f2e",color:"#E8C98A",border:"none",borderRadius:14,fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",letterSpacing:0.5,cursor:"pointer",boxShadow:"0 4px 24px rgba(0,0,0,0.15)",transition:"all 0.3s ease"}}>Try Nuette</button>
         <div style={{marginTop:60,display:"flex",gap:24,justifyContent:"center",flexWrap:"wrap"}}>
-          <a href="#" style={{color:"#8a8070",textDecoration:"none",fontSize:13}}>Terms of Service</a>
-          <a href="#" style={{color:"#8a8070",textDecoration:"none",fontSize:13}}>Privacy Policy</a>
+          <a href="/terms" style={{color:"#8a8070",textDecoration:"none",fontSize:13}}>Terms of Service</a>
+          <a href="/privacy" style={{color:"#8a8070",textDecoration:"none",fontSize:13}}>Privacy Policy</a>
           <a href="mailto:hello@nuette.app" style={{color:"#8a8070",textDecoration:"none",fontSize:13}}>Contact</a>
         </div>
         <p style={{marginTop:24,fontSize:12,color:"#c4beb5"}}>© 2026 Nuette. All rights reserved.</p>
