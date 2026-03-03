@@ -177,6 +177,7 @@ export default function Home() {
   const[authMode,setAuthMode]=useState("login");
   const[authEmail,setAuthEmail]=useState("");
   const[authPw,setAuthPw]=useState("");
+  const[showPw,setShowPw]=useState(false);
   const[authError,setAuthError]=useState("");
   const[authSubmitting,setAuthSubmitting]=useState(false);
   const[wups,setWups]=useState(null);
@@ -199,6 +200,7 @@ export default function Home() {
   const[napEditModal,setNapEditModal]=useState(null);
   const[neStart,setNeStart]=useState("");
   const[neEnd,setNeEnd]=useState("");
+  const[nameError,setNameError]=useState(false);
   const[saveStatus,setSaveStatus]=useState(null);
   const dref=useRef(),nref=useRef(),napref=useRef();
 
@@ -536,6 +538,7 @@ export default function Home() {
     @keyframes starFloat{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:.75;transform:translateY(-6px)}}
     @keyframes dots{0%,20%{opacity:0}50%{opacity:1}80%,100%{opacity:0}}
     @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
     @keyframes checkPop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
     @keyframes pulseGold{0%,100%{box-shadow:0 0 0 0 rgba(201,169,110,0)}50%{box-shadow:0 0 40px 10px rgba(201,169,110,0.25)}}
     @keyframes nightFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -544,7 +547,7 @@ export default function Home() {
     .bp{background:linear-gradient(135deg,#C9A96E,#E8C98A);color:#0D1117;border:none;border-radius:16px;padding:16px 32px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;width:100%;transition:all .2s;letter-spacing:.3px}
     .bp:disabled{opacity:.35;cursor:not-allowed}
     .ba{background:transparent;border:1px solid rgba(201,169,110,0.5);border-radius:20px;padding:20px 32px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:500;cursor:pointer;width:100%;transition:all .3s;letter-spacing:.5px;color:#C9A96E;animation:pulseGold 3s ease-in-out infinite}
-    .bg{background:transparent;color:#8B8680;border:none;padding:12px 0;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:color .2s}
+    .bg{background:transparent;color:#8B8680;border:none;padding:12px 16px;min-height:44px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:color .2s}
     .bg:hover{color:#EDE8DF}
     .if{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;color:#EDE8DF;font-family:'DM Sans',sans-serif;font-size:16px;width:100%;outline:none;transition:all .2s}
     .if:focus{border-color:rgba(201,169,110,0.4)}.if::placeholder{color:#4A4640}
@@ -615,6 +618,7 @@ export default function Home() {
           <p style={{fontFamily:"'Cormorant Garamond',serif",fontStyle:"italic",fontWeight:300,fontSize:22,color:"#E8C98A",letterSpacing:1,marginBottom:20}}>Your calm at 3am.</p>
           <p style={{fontSize:15,color:"rgba(237,232,223,0.6)",lineHeight:1.7,marginBottom:40,maxWidth:400,marginLeft:"auto",marginRight:"auto"}}>Luna knows your baby, your method, and exactly what night you're on. She stays with you in real time — because no parent should sit alone on the hallway floor at 3am.</p>
           <button onClick={()=>{setAuthMode("signup");setSc(S.AUTH);}} style={{display:"inline-block",padding:"16px 48px",background:"linear-gradient(135deg,#C9A96E,#E8C98A)",color:"#0D1117",border:"none",borderRadius:14,fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",letterSpacing:0.5,cursor:"pointer",boxShadow:"0 4px 24px rgba(201,169,110,0.3)",transition:"all 0.3s ease"}}>Meet Luna</button>
+          <p style={{marginTop:20}}><button onClick={()=>{setAuthMode("login");setSc(S.AUTH);}} style={{background:"none",border:"none",color:"rgba(237,232,223,0.5)",fontSize:14,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",padding:"8px 16px",transition:"color .2s"}}>Already have an account? <span style={{color:"#C9A96E",textDecoration:"underline"}}>Sign in</span></button></p>
         </div>
       </div>
 
@@ -715,9 +719,12 @@ export default function Home() {
           <button onClick={()=>{setAuthMode("signup");setAuthError("");}} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:14,fontWeight:500,background:authMode==="signup"?"rgba(201,169,110,0.2)":"transparent",color:authMode==="signup"?"#C9A96E":"#8a8070",transition:"all .2s"}}>Create Account</button>
         </div>
         <input type="email" placeholder="Email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} style={{width:"100%",padding:"14px 16px",marginBottom:12,borderRadius:12,border:"1px solid rgba(201,169,110,0.2)",background:"rgba(255,255,255,0.04)",color:"#EDE8DF",fontSize:15,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}/>
-        <input type="password" placeholder="Password" value={authPw} onChange={e=>setAuthPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAuth()} style={{width:"100%",padding:"14px 16px",marginBottom:8,borderRadius:12,border:"1px solid rgba(201,169,110,0.2)",background:"rgba(255,255,255,0.04)",color:"#EDE8DF",fontSize:15,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}/>
+        <div style={{position:"relative",width:"100%",marginBottom:8}}>
+          <input type={showPw?"text":"password"} placeholder="Password" value={authPw} onChange={e=>setAuthPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAuth()} style={{width:"100%",padding:"14px 48px 14px 16px",borderRadius:12,border:"1px solid rgba(201,169,110,0.2)",background:"rgba(255,255,255,0.04)",color:"#EDE8DF",fontSize:15,fontFamily:"'DM Sans',sans-serif",outline:"none",boxSizing:"border-box"}}/>
+          <button onClick={()=>setShowPw(p=>!p)} type="button" style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:4,color:"#6B6560",fontSize:13,fontFamily:"'DM Sans',sans-serif"}}>{showPw?"Hide":"Show"}</button>
+        </div>
         {authError&&<p style={{color:authError.includes("Check your email")?"#C9A96E":"#e87c7c",fontSize:13,margin:"8px 0",lineHeight:1.4}}>{authError}</p>}
-        <button onClick={handleAuth} disabled={authSubmitting||!authEmail||!authPw} style={{width:"100%",padding:"15px 0",marginTop:16,borderRadius:12,border:"none",cursor:authSubmitting?"not-allowed":"pointer",background:authSubmitting?"rgba(201,169,110,0.3)":"linear-gradient(135deg,#C9A96E,#E8C98A)",color:"#0D1117",fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",letterSpacing:0.5,transition:"all .2s"}}>{authSubmitting?"...":(authMode==="signup"?"Create Account":"Sign In")}</button>
+        <button onClick={handleAuth} disabled={authSubmitting||!authEmail||!authPw} style={{width:"100%",padding:"15px 0",marginTop:16,borderRadius:12,border:"none",cursor:authSubmitting?"not-allowed":"pointer",background:authSubmitting?"rgba(201,169,110,0.3)":"linear-gradient(135deg,#C9A96E,#E8C98A)",color:"#0D1117",fontSize:16,fontWeight:600,fontFamily:"'DM Sans',sans-serif",letterSpacing:0.5,transition:"all .2s"}}>{authSubmitting?"...":(authMode==="signup"?"Get Started":"Sign In")}</button>
         {authMode==="signup"&&<p style={{color:"#8a8070",fontSize:12,marginTop:16,lineHeight:1.5}}>Password must be at least 6 characters</p>}
       </div>
     </div>}
@@ -740,7 +747,7 @@ export default function Home() {
             <p className="f3" style={{fontSize:15,color:"#8B8680",lineHeight:1.7,maxWidth:300}}>Science-backed sleep training with an expert available to guide you through every moment — especially the hard ones at 3am.</p>
           </div>
           <div className="f4">
-            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i===0?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2,3].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i===0?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
             <button className="bp" onClick={()=>setSc(S.ON2)}>Get Started</button>
           </div>
         </div>
@@ -759,7 +766,7 @@ export default function Home() {
             </div>
           </div>
           <div className="f5">
-            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i===1?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2,3].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i<=1?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
             <button className="bp" onClick={()=>setSc(S.ON3)}>Continue</button>
           </div>
         </div>
@@ -782,7 +789,7 @@ export default function Home() {
             </div>
           </div>
           <div className="f5">
-            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i===2?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>{[0,1,2,3].map(i=><div key={i} style={{height:2,flex:1,borderRadius:1,background:i<=2?"#C9A96E":"rgba(255,255,255,0.1)"}} />)}</div>
             <button className="bp" onClick={()=>setSc(S.BABY)}>Let's Begin</button>
           </div>
         </div>
@@ -792,12 +799,13 @@ export default function Home() {
       {sc===S.BABY&&(
         <div style={{minHeight:"100vh",padding:"60px 28px 48px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
           <div>
-            <button className="bg" onClick={()=>setSc(S.ON3)} style={{marginBottom:20,fontSize:13}}>← Back</button>
+            <button className="bg" onClick={()=>setSc(S.ON3)} style={{marginBottom:20,marginLeft:-16}}>← Back</button>
             <h2 className="f1" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:300,marginBottom:6}}>Tell us about<br />your baby</h2>
             <p className="f2" style={{fontSize:14,color:"#6B6560",marginBottom:32}}>Luna will use this to personalise everything.</p>
             <div className="f3" style={{marginBottom:24}}>
               <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Baby's name</label>
-              <input className="if" placeholder="Enter name..." value={name} onChange={e=>setName(e.target.value)} />
+              <input className="if" placeholder="Enter name..." value={name} onChange={e=>{setName(e.target.value);setNameError(false);}} style={nameError?{borderColor:"#e87c7c",animation:"shake .4s ease"}:{}} />
+              {nameError&&<p style={{color:"#e87c7c",fontSize:13,marginTop:8,animation:"fadeIn .3s ease"}}>Please enter your baby's name so Luna can personalise your experience.</p>}
             </div>
             <div className="f4">
               <label style={{fontSize:12,color:"#6B6560",letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:10}}>Age in months</label>
@@ -824,7 +832,7 @@ export default function Home() {
             </div>
           </div>
           <div className="f5" style={{paddingTop:24}}>
-            <button className="bp" disabled={!name.trim()} onClick={()=>setSc(S.PED)}>Continue →</button>
+            <button className="bp" onClick={()=>{if(!name.trim()){setNameError(true);return;}setSc(S.PED);}}>Continue →</button>
           </div>
         </div>
       )}
@@ -833,7 +841,7 @@ export default function Home() {
       {sc===S.PED&&(
         <div style={{minHeight:"100vh",padding:"60px 28px 48px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
           <div>
-            <button className="bg" onClick={()=>setSc(S.BABY)} style={{marginBottom:20,fontSize:13}}>← Back</button>
+            <button className="bg" onClick={()=>setSc(S.BABY)} style={{marginBottom:20,marginLeft:-16}}>← Back</button>
             <div className="f1" style={{fontSize:48,marginBottom:20}}>👶</div>
             <h2 className="f2" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:300,lineHeight:1.2,marginBottom:12}}>One important<br />question first</h2>
             <p className="f3" style={{fontSize:15,color:"#8B8680",lineHeight:1.7,marginBottom:28}}>Has your pediatrician cleared {name} for sleep training? We always recommend checking with your doctor first, especially for babies under 6 months.</p>
